@@ -33,7 +33,7 @@ jobs:
         run: java -cp gpu4j-core/target/gpu4j-core-0.1.0.jar examples/Demo.java
       - name: Upload JaCoCo coverage
         if: matrix.os == 'ubuntu-latest' && matrix.java == '17'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-coverage
           path: gpu4j-core/target/site/jacoco/jacoco.xml

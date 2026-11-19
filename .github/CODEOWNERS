@@ -1,0 +1,6 @@
+# CODEOWNERS for gpu4j
+#
+# Owned and maintained by Craton Software Company (https://craton.com.ar).
+# See https://docs.github.com/articles/about-code-owners
+
+* @craton-co/maintainers

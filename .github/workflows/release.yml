@@ -1,0 +1,63 @@
+name: Release to Maven Central
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.1.0, required for manual dispatch)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Verify tag matches pom version
+        shell: bash
+        env:
+          RAW_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          POM_VERSION="$(mvn -N -q help:evaluate -Dexpression=project.version -DforceStdout)"
+          TAG_VERSION="${RAW_TAG#v}"
+          echo "pom version: $POM_VERSION"
+          echo "tag version: $TAG_VERSION"
+          if [ "$POM_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match pom.xml version ($POM_VERSION)"
+            exit 1
+          fi
+      - name: Deploy to Maven Central
+        run: mvn -B -ntp -Prelease deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            gpu4j-core/target/gpu4j-core-*.jar
+            gpu4j-core/target/gpu4j-core-*.pom
+            gpu4j-core/target/gpu4j-core-*.asc
+          draft: false
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
